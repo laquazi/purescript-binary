@@ -2,20 +2,20 @@ module Data.Binary.Bits.Spec (spec) where
 
 import Prelude hiding (add)
 
-import Control.Monad.Eff.Random (RANDOM)
+--import Effect.Random (RANDOM)
 import Data.Array as A
 import Data.Binary (Bits(Bits), _0)
 import Data.Binary as Bin
 import Data.Foldable (all)
 import Data.Maybe (Maybe(Just))
-import Data.String as Str
+import Data.String.CodeUnits as Str
 import Data.Tuple (Tuple(..), fst)
 import Test.Arbitrary (ArbBit(ArbBit), ArbBits(ArbBits), ArbNonNegativeInt(ArbNonNegativeInt))
 import Test.QuickCheck (Result, (<?>), (===))
 import Test.Unit (TestSuite, suite, test)
 import Test.Unit.QuickCheck (quickCheck)
 
-spec :: ∀ e. TestSuite (random :: RANDOM | e)
+--spec :: ∀ e. TestSuite (random :: RANDOM | e)
 spec = suite "Bits" do
   test "addLeadingZeros" $ quickCheck propAddLeadingZeros
   test "stripLeadingZeros" $ quickCheck propStripLeadingZeros
@@ -35,13 +35,13 @@ propAddLeadingZeros (ArbNonNegativeInt arbitraryLength) (ArbBits bits) =
     <>  "\nBits:            " <> show bits
   where
     targetLength = arbitraryLength `mod` 1024
-    (Bits bs) = Bin.addLeadingZeros targetLength bits
+    Bits bs = Bin.addLeadingZeros targetLength bits
     expectedLength = max (Bin.length bits) targetLength
     actualLength = A.length bs
 
 propStripLeadingZeros :: ArbBits -> Boolean
 propStripLeadingZeros (ArbBits bs) =
-   let (Bits bits) = Bin.stripLeadingZeros bs
+   let Bits bits = Bin.stripLeadingZeros bs
    in A.length bits == 1 || A.head bits /= Just _0
 
 propHasBinDigits :: ArbBits -> Result
@@ -64,13 +64,13 @@ propLeftShift (ArbBit bit) (ArbBits bits) =
     <?> "\nExpected: " <> show expected
     <>  "\nActual:   " <> show actual
   where
-    (Tuple o shifted) = Bin.leftShift bit bits
+    Tuple o shifted = Bin.leftShift bit bits
     expected = Bin.toBits bits <> Bin.toBits bit
     actual = Bin.toBits o <> Bin.toBits shifted
 
 propRightShift :: ArbBit -> ArbBits -> Result
 propRightShift (ArbBit bit) (ArbBits bits) =
-  let (Tuple o shifted) = Bin.rightShift bit bits
+  let Tuple o shifted = Bin.rightShift bit bits
       expected = Bin.toBits bit <> Bin.toBits bits
       actual = Bin.toBits shifted <> Bin.toBits o
   in expected === actual

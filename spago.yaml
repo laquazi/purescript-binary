@@ -1,0 +1,28 @@
+package:
+  name: binary
+  dependencies:
+    - arrays
+    - avar
+    - console
+    - effect
+    - foldable-traversable
+    - integers
+    - maybe
+    - nonempty
+    - ordered-collections
+    - ordered-set
+    - partial
+    - prelude
+    - quickcheck
+    - random
+    - strings
+    - test-unit
+    - tuples
+    - typelevel
+  test:
+    main: Test.Main
+    dependencies: []
+workspace:
+  packageSet:
+    registry: 58.0.1
+  extraPackages: {}

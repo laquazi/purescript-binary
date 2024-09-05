@@ -1,11 +1,11 @@
 module Debug where
 
 import Prelude (class Show)
-import Control.Monad.Eff.Console (logShow)
-import Control.Monad.Eff.Unsafe (unsafePerformEff)
+import Effect.Class.Console (logShow)
+import Effect.Unsafe (unsafePerformEffect)
 
 dbg :: ∀ a s . Show s => s -> a -> a
-dbg s a = let _ = unsafePerformEff (logShow s) in a
+dbg s a = let _ = unsafePerformEffect (logShow s) in a
 
 dbgs :: ∀ s . Show s => s -> s
-dbgs s = let _ = unsafePerformEff (logShow s) in s
+dbgs s = let _ = unsafePerformEffect (logShow s) in s

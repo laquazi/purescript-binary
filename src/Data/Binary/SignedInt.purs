@@ -42,8 +42,8 @@ type Int8   = SignedInt D8
 type Int16  = SignedInt D16
 type Int32  = SignedInt D32
 type Int64  = SignedInt D64
-type Int128 = SignedInt (D1 :* D2 :* D8)
-type Int256 = SignedInt (D2 :* D5 :* D6)
+type Int128 = SignedInt ((D1 :* D2) :* D8)
+type Int256 = SignedInt ((D2 :* D5) :* D6)
 
 newtype SignedInt b = SignedInt Bits
 
@@ -65,14 +65,14 @@ instance ordSignedInt :: Pos b => Ord (SignedInt b) where
 
 instance showSignedInt :: Pos b => Show (SignedInt b) where
   show (SignedInt bits) =
-    "SignedInt" <> show (Nat.toInt (undefined :: b)) <> "#" <> Bin.toBinString bits
+    "SignedInt" <> show (Nat.toInt $ (undefined :: b)) <> "#" <> Bin.toBinString bits
 
 magnitude :: ∀ b. SignedInt b -> b
 magnitude _ = undefined
 
 flipSign :: ∀ b. SignedInt b -> SignedInt b
 flipSign (SignedInt bits) =
-  let { head: h, tail: (Bits t) } = Bin.uncons bits
+  let { head: h, tail: Bits t } = Bin.uncons bits
       bs = Bits $ A.cons (Bin.not h) t
   in SignedInt bs
 
@@ -84,7 +84,7 @@ complement = unwrap >>> complementBits >>> SignedInt
 
 takeSignedInt :: ∀ b . Pos b => Gt b D2 => Bits -> SignedInt b
 takeSignedInt = Bin.take b >>> signExtend b >>> SignedInt
-  where b = Nat.toInt (undefined :: b)
+  where b = Nat.toInt $ (undefined :: b)
 
 -- | Converts `Int` value to `SignedInt b` for b >= 31
 fromInt :: ∀ b . Pos b => GtEq b D32 => b -> Int -> SignedInt b
@@ -100,11 +100,11 @@ fromInt b i = SignedInt signed where
 
 fromUnsigned :: ∀ a b . Pos a => Pos b => Gt b D2 => Lt a b => UnsignedInt a -> SignedInt b
 fromUnsigned u = SignedInt (Bin.addLeadingZeros b (Bin.toBits u))
-  where b = Nat.toInt (undefined :: b)
+  where b = Nat.toInt $ (undefined :: b)
 
 fromUnsignedUnsafe :: ∀ a b . Pos a => Pos b => UnsignedInt a -> SignedInt b
 fromUnsignedUnsafe = Bin.toBits >>> Bin.take b >>> Bin.addLeadingZeros b >>> SignedInt
-  where b = Nat.toInt (undefined :: b)
+  where b = Nat.toInt $ (undefined :: b)
 
 tryFromUnsigned :: ∀ b . Pos b => UnsignedInt b -> Maybe (SignedInt b)
 tryFromUnsigned = Bin.toBits >>> Bin.stripLeadingZeros >>> Bin.tryFromBits
@@ -123,12 +123,12 @@ toUnsigned s = unsafePartial
 toInt :: ∀ b . Pos b => LtEq b D32 => SignedInt b -> Int
 toInt si@(SignedInt bits) =
   if isNegative si
-  then negate let (SignedInt bb) = complement si in Bin.unsafeBitsToInt bb
+  then negate let SignedInt bb = complement si in Bin.unsafeBitsToInt bb
   else Bin.unsafeBitsToInt $ Bin.tail bits
 
 asBits :: ∀ a b . Pos a => Pos b => Lt a b => SignedInt a -> SignedInt b
 asBits (SignedInt bits) = SignedInt (signExtend b bits) where
-  b = Nat.toInt (undefined :: b)
+  b = Nat.toInt $ (undefined :: b)
 
 tryAsBits :: ∀ a b . Pos a => Pos b => Gt a b => SignedInt a -> Maybe (SignedInt b)
 tryAsBits (SignedInt bits) =
@@ -137,7 +137,7 @@ tryAsBits (SignedInt bits) =
   else Nothing
  where
   bs = signSquash b bits
-  b = Nat.toInt (undefined :: b)
+  b = Nat.toInt $ (undefined :: b)
 
 isNegative :: ∀ a . Binary a => a -> Boolean
 isNegative = Bin.msb >>> eq _1
@@ -157,7 +157,7 @@ instance binarySignedInt :: Pos b => Binary (SignedInt b) where
       EQ -> Just (SignedInt bits)
       LT -> Just (SignedInt $ Bin.addLeadingZeros width bits)
       GT -> Nothing
-    where width = Nat.toInt (undefined :: b)
+    where width = Nat.toInt $ (undefined :: b)
 
 instance boundedSignedInt :: Pos b => Bounded (SignedInt b) where
   bottom = SignedInt $ Bits (A.cons _1 (A.replicate (Nat.toInt (undefined :: b) - 1) _0))
@@ -170,12 +170,11 @@ signExtend width (Bits bits) =
   in Bits if d < 1 then bits else (A.replicate d _1) <> bits
 
 signSquash :: Int -> Bits -> Bits
-signSquash width bits | let l = Bin.length bits in l <= width || l < 3 =
-  bits
-signSquash width bits @ (Bits bs) =
-  if A.index bs 0 == A.index bs 1
-  then signSquash width (Bin.tail bits)
-  else bits
+signSquash width bits@(Bits bs)
+    | Bin.length bits <= width || Bin.length bits < 3  = bits
+    | A.index bs 0 == A.index bs 1 = signSquash width (Bin.tail bits)
+    | otherwise = bits
+
 
 signAlign :: Bits -> Bits -> Tuple Bits Bits
 signAlign bas@(Bits as) bbs@(Bits bs) =
@@ -195,9 +194,9 @@ adjustWidth width bits =
 
 instance semiringSignedInt :: Pos b => Semiring (SignedInt b) where
   zero = SignedInt $ Bits $ A.replicate b _0 where
-    b = Nat.toInt (undefined :: b)
+    b = Nat.toInt $ (undefined :: b)
   add (SignedInt as) (SignedInt bs) = Bin.unsafeFromBits result where
-    b = Nat.toInt (undefined :: b)
+    b = Nat.toInt $ (undefined :: b)
     result = wrapBitsOverflow b (Bin.addBits _0 as bs)
     wrapBitsOverflow _ (NoOverflow bits) = bits
     wrapBitsOverflow n res =
@@ -208,7 +207,7 @@ instance semiringSignedInt :: Pos b => Semiring (SignedInt b) where
     where
       sres = Bin.drop (Bin.length res - b) res
       res = iter rlen p `mod` Bits (_1 : A.replicate b _0)
-      b = Nat.toInt (undefined :: b)
+      b = Nat.toInt $ (undefined :: b)
       a = signExtend (1 + mlen) mBits <> Bin.zeroes (rlen + 1)
       s = nBits <> Bin.zeroes (rlen + 1)
       nBits = complementBits $ signExtend (1 + mlen) mBits
@@ -251,7 +250,7 @@ divMod :: ∀ b . Pos b => SignedInt b -> SignedInt b -> Tuple (SignedInt b) (Si
 divMod (SignedInt dividend) (SignedInt divisor) =
   bimap f f $ dividend `divMod2c` divisor where
   f = adjustWidth b >>> SignedInt
-  b = Nat.toInt (undefined :: b)
+  b = Nat.toInt $ (undefined :: b)
 
 divMod2c :: Bits -> Bits -> Tuple Bits Bits
 divMod2c x _ | Bin.isZero x = Tuple x x

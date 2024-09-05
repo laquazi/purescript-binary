@@ -4,8 +4,8 @@ module Data.Binary.SignedInt.Spec
 
 import Test.Arbitrary
 
-import Control.Monad.Eff.Console (CONSOLE)
-import Control.Monad.Eff.Random (RANDOM)
+--import Effect.Console (CONSOLE)
+import Effect.Random (random)
 import Data.Array (foldr, replicate)
 import Data.Array as A
 import Data.Binary as Bin
@@ -16,15 +16,16 @@ import Data.Int as Int
 import Data.List (List(..), (:))
 import Data.Maybe (Maybe(..))
 import Data.Newtype (unwrap)
-import Data.String as Str
+import Data.String.CodeUnits as Str
 import Data.Typelevel.Num (class Gt, class GtEq, class Pos, D2, D32, D42, d32, d99)
 import Imul (imul)
-import Prelude (compose, discard, id, map, negate, not, show, zero, ($), (*), (+), (<>), (==), (||))
+import Prelude (compose, discard, identity, map, negate, not, show, zero, ($), (*), (+), (<>), (==), (||))
 import Test.QuickCheck (Result, (<?>), (===))
 import Test.Unit (TestSuite, suite, test)
 import Test.Unit.QuickCheck (quickCheck)
+import Data.String (null) as Str
 
-spec :: ∀ e. TestSuite (random :: RANDOM, console :: CONSOLE | e)
+--spec :: ∀ e. TestSuite (random :: RANDOM, console :: CONSOLE | e)
 spec = suite "SignedInt" do
   test "number of bits" $ quickCheck propNumberOfBits
   test "take SignedInt from bits" $ quickCheck propTakeSignedInt
@@ -35,7 +36,7 @@ spec = suite "SignedInt" do
   test "negation" $ quickCheck propNegation
   test "toBinString contains only bin digits" $ quickCheck propBinString
   test "toBinString isn't empty" $ quickCheck propBinStringEmptiness
-  test "toBinString produces unique representation" $ quickCheck propBinStringUniqness
+  test "toBinString produces unique representation" $ quickCheck propBinStringUniqueness
   test "addition" $ quickCheck propAddition
   test "multiplication" $ quickCheck propMultiplication
   test "Int roundtrip" $ quickCheck propIntRoundtrip
@@ -57,7 +58,7 @@ propNumberOfBits ints ops =
     res = r ints ops zero
     r Nil _ a = a
     r _ Nil a = a
-    r ((ArbSignedInt32 i):is) ((ArbSemiringOp _ o):os) a = r is os (i `o` a)
+    r ((ArbSignedInt32 i):is) ((ArbSemiringOp _ o):os) a = r is os $ (i `o` a)
 
 propTakeSignedInt :: ArbBits -> Result
 propTakeSignedInt (ArbBits bits) =
@@ -115,7 +116,7 @@ propNegation (ArbSignedInt32 si) =
     <>  "\nSignedInt: " <> show si
   where
     expected = si
-    actual = foldr compose id (replicate 8 negate) $ si
+    actual = foldr compose identity (replicate 8 negate) $ si
 
 propIntRoundtrip :: ArbInt -> Result
 propIntRoundtrip (ArbInt i) = i === i' where
@@ -133,8 +134,8 @@ propBinStringEmptiness (ArbSignedInt32 ui) =
   not Str.null (toString2c Bin ui)
     <?> "String representation of SignedInt must not be empty"
 
-propBinStringUniqness :: Array ArbSignedInt32 -> Result
-propBinStringUniqness as = A.length sts === A.length uis where
+propBinStringUniqueness :: Array ArbSignedInt32 -> Result
+propBinStringUniqueness as = A.length sts === A.length uis where
   sts = A.nub $ map (toString2c Bin) uis
   uis = A.nub $ map unwrap as
 

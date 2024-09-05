@@ -1,6 +1,6 @@
 "use strict";
 
-exports.imul = function(a) {
+export const imul = function(a) {
   return function(b) {
     return Math.imul(a, b);
   }

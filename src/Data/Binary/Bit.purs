@@ -11,7 +11,7 @@ module Data.Binary.Bit
 import Prelude
 
 import Data.Array as A
-import Data.String as Str
+import Data.String.CodeUnits as Str
 import Data.Maybe (Maybe(..))
 import Data.Newtype (class Newtype)
 

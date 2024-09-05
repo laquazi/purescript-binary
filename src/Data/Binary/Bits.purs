@@ -42,7 +42,7 @@ import Data.Int as Int
 import Data.Maybe (Maybe(..), fromMaybe)
 import Data.Newtype (class Newtype, unwrap)
 import Data.Ord (abs)
-import Data.String as Str
+import Data.String.CodeUnits as Str
 import Data.Traversable (traverse)
 import Data.Tuple (Tuple(..), fst, uncurry)
 import Unsafe.Coerce (unsafeCoerce)
@@ -61,14 +61,14 @@ fromBinString = Str.toCharArray >>> traverse charToBit >>> map Bits
 
 toOctString :: Bits -> String
 toOctString = toBaseString 3 f where
-  f [(Bit false),(Bit false),(Bit false)] = '0'
-  f [(Bit false),(Bit false),(Bit true )] = '1'
-  f [(Bit false),(Bit true ),(Bit false)] = '2'
-  f [(Bit false),(Bit true ),(Bit true )] = '3'
-  f [(Bit true ),(Bit false),(Bit false)] = '4'
-  f [(Bit true ),(Bit false),(Bit true )] = '5'
-  f [(Bit true ),(Bit true ),(Bit false)] = '6'
-  f [(Bit true ),(Bit true ),(Bit true )] = '7'
+  f [Bit false,Bit false,Bit false] = '0'
+  f [Bit false,Bit false,Bit true] = '1'
+  f [Bit false,Bit true,Bit false] = '2'
+  f [Bit false,Bit true,Bit true] = '3'
+  f [Bit true,Bit false,Bit false] = '4'
+  f [Bit true,Bit false,Bit true] = '5'
+  f [Bit true,Bit true,Bit false] = '6'
+  f [Bit true,Bit true,Bit true] = '7'
   f bs = unsafeCoerce bs
 
 fromOctString :: String -> Maybe Bits
@@ -85,22 +85,22 @@ fromOctString = fromBaseString f where
 
 toHexString :: Bits -> String
 toHexString = toBaseString 4 f where
-  f [(Bit false),(Bit false),(Bit false),(Bit false)] = '0'
-  f [(Bit false),(Bit false),(Bit false),(Bit true )] = '1'
-  f [(Bit false),(Bit false),(Bit true ),(Bit false)] = '2'
-  f [(Bit false),(Bit false),(Bit true ),(Bit true )] = '3'
-  f [(Bit false),(Bit true ),(Bit false),(Bit false)] = '4'
-  f [(Bit false),(Bit true ),(Bit false),(Bit true )] = '5'
-  f [(Bit false),(Bit true ),(Bit true ),(Bit false)] = '6'
-  f [(Bit false),(Bit true ),(Bit true ),(Bit true )] = '7'
-  f [(Bit true ),(Bit false),(Bit false),(Bit false)] = '8'
-  f [(Bit true ),(Bit false),(Bit false),(Bit true )] = '9'
-  f [(Bit true ),(Bit false),(Bit true ),(Bit false)] = 'a'
-  f [(Bit true ),(Bit false),(Bit true ),(Bit true )] = 'b'
-  f [(Bit true ),(Bit true ),(Bit false),(Bit false)] = 'c'
-  f [(Bit true ),(Bit true ),(Bit false),(Bit true )] = 'd'
-  f [(Bit true ),(Bit true ),(Bit true ),(Bit false)] = 'e'
-  f [(Bit true ),(Bit true ),(Bit true ),(Bit true )] = 'f'
+  f [Bit false,Bit false,Bit false,Bit false] = '0'
+  f [Bit false,Bit false,Bit false,Bit true] = '1'
+  f [Bit false,Bit false,Bit true,Bit false] = '2'
+  f [Bit false,Bit false,Bit true,Bit true] = '3'
+  f [Bit false,Bit true,Bit false,Bit false] = '4'
+  f [Bit false,Bit true,Bit false,Bit true] = '5'
+  f [Bit false,Bit true,Bit true,Bit false] = '6'
+  f [Bit false,Bit true,Bit true,Bit true] = '7'
+  f [Bit true,Bit false,Bit false,Bit false] = '8'
+  f [Bit true,Bit false,Bit false,Bit true] = '9'
+  f [Bit true,Bit false,Bit true,Bit false] = 'a'
+  f [Bit true,Bit false,Bit true,Bit true] = 'b'
+  f [Bit true,Bit true,Bit false,Bit false] = 'c'
+  f [Bit true,Bit true,Bit false,Bit true] = 'd'
+  f [Bit true,Bit true,Bit true,Bit false] = 'e'
+  f [Bit true,Bit true,Bit true,Bit true] = 'f'
   f bs = unsafeCoerce bs
 
 fromHexString :: String -> Maybe Bits
@@ -240,7 +240,7 @@ subtractBits (Bits as) (Bits bs) = Bits acc where
   f (Tuple (Bit true)  (Bit false)) (Tuple true  acc) = Tuple false (A.cons _0 acc)
   f (Tuple (Bit true)  (Bit true) ) (Tuple false acc) = Tuple false (A.cons _0 acc)
   f (Tuple (Bit true)  (Bit true) ) (Tuple true  acc) = Tuple true  (A.cons _1 acc)
-  (Tuple _ acc) = A.foldr f (Tuple false []) (A.zip as bs)
+  Tuple _ acc = A.foldr f (Tuple false []) (A.zip as bs)
 
 extendOverflow :: Overflow Bits -> Bits
 extendOverflow (NoOverflow bits) = bits
@@ -250,8 +250,8 @@ intToBits :: Int -> Bits
 intToBits 0 = zero
 intToBits i = Bits (f i) where
   f 0 = empty
-  f n | Int.odd n = A.snoc (f (n `div` 2)) _1
-      | otherwise = A.snoc (f (n `div` 2)) _0
+  f n | Int.odd n = A.snoc (f $ n `div` 2) _1
+      | otherwise = A.snoc (f $ n `div` 2) _0
 
 unsafeBitsToInt :: Bits -> Int
 unsafeBitsToInt (Bits bits) = fst $ A.foldr f (Tuple 0 1) bits where

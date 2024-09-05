@@ -39,7 +39,7 @@ import Data.Binary.Overflow as Overflow
 import Data.HeytingAlgebra as HA
 import Data.Maybe (Maybe(Just, Nothing), fromMaybe')
 import Data.Newtype (unwrap, wrap)
-import Data.String as Str
+import Data.String.CodeUnits as Str
 import Data.Traversable (traverse)
 import Data.Tuple (Tuple(Tuple), snd)
 import Partial.Unsafe (unsafeCrashWith)
@@ -60,8 +60,8 @@ class Binary a where
   tryFromBits :: Bits -> Maybe a
 
 instance binaryBit :: Binary Bit where
-  lsb = id
-  msb = id
+  lsb = identity
+  msb = identity
   and (Bit a) (Bit b) = Bit (a && b)
   xor (Bit a) (Bit b) = Bit ((a || b) && HA.not (a && b))
   or  (Bit a) (Bit b) = Bit (a || b)
@@ -83,7 +83,7 @@ instance binaryBits :: Binary Bits where
     where f a (Tuple o t) = flip A.cons t <$> leftShift o a
   rightShift bit (Bits bits) = Bits <$> A.foldl f (Tuple bit []) bits
     where f (Tuple o t) a = A.snoc t <$> rightShift o a
-  toBits = id
+  toBits = identity
   tryFromBits = Just <<< fromBits
 
 isOdd :: ∀ a. Binary a => a -> Boolean
@@ -96,7 +96,7 @@ isZero :: ∀ a. Binary a => a -> Boolean
 isZero = toBits >>> unwrap >>> A.dropWhile (eq _0) >>> A.null
 
 unsafeFromBits :: ∀ a. Binary a => Bits -> a
-unsafeFromBits bits = fromMaybe' (\_ -> unsafeCrashWith err) (tryFromBits bits) where
+unsafeFromBits bits = tryFromBits bits # fromMaybe' \_ -> unsafeCrashWith err  where
   err = "Unsafe conversion of Bits to a binary value has failed: " <> show bits
 
 unsafeRightShift :: ∀ a. Binary a => a -> a

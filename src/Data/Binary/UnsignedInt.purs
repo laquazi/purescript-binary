@@ -18,11 +18,12 @@ import Data.Binary (class Binary, Bits(Bits), Overflow(NoOverflow), _0, _1, tryF
 import Data.Binary as Bin
 import Data.Binary.BaseN (class BaseN, Radix(Hex, Oct, Bin))
 import Data.Binary.BaseN as Base
-import Data.List ((!!))
+import Data.Set.Ordered as Oset
 import Data.Map as Map
 import Data.Maybe (Maybe(Just, Nothing), fromJust)
 import Data.Newtype (class Newtype, unwrap)
-import Data.String as Str
+import Data.String.Common as Str
+import Data.String.CodeUnits as Str
 import Data.Traversable (traverse)
 import Data.Tuple (Tuple(..), fst, snd, uncurry)
 import Data.Typelevel.Num (class Gt, class GtEq, class Lt, class Pos, type (:*), D1, D16, D2, D31, D32, D5, D6, D64, D8)
@@ -35,8 +36,8 @@ type Uint8   = UnsignedInt D8
 type Uint16  = UnsignedInt D16
 type Uint32  = UnsignedInt D32
 type Uint64  = UnsignedInt D64
-type Uint128 = UnsignedInt (D1 :* D2 :* D8)
-type Uint256 = UnsignedInt (D2 :* D5 :* D6)
+type Uint128 = UnsignedInt ((D1 :* D2) :* D8)
+type Uint256 = UnsignedInt ((D2 :* D5) :* D6)
 
 newtype UnsignedInt b = UnsignedInt Bits
 
@@ -51,14 +52,14 @@ instance ordUnsignedInt :: Pos b => Ord (UnsignedInt b) where
 
 instance showUnsignedInt :: Pos b => Show (UnsignedInt b) where
   show (UnsignedInt bits) =
-    "UnsignedInt" <> show (Nat.toInt (undefined :: b)) <> "#" <> Bin.toBinString bits
+    "UnsignedInt" <> show (Nat.toInt $ (undefined :: b)) <> "#" <> Bin.toBinString bits
 
 magnitude :: ∀ b. UnsignedInt b -> b
 magnitude _ = undefined
 
 takeUnsignedInt :: ∀ b . Pos b => Bits -> UnsignedInt b
 takeUnsignedInt = Bin.take b >>> Bin.stripLeadingZeros >>> UnsignedInt
-  where b = Nat.toInt (undefined :: b)
+  where b = Nat.toInt $ (undefined :: b)
 
 -- | Converts `Int` value to `UnsignedInt b` for b >= 31
 -- | Behavior for negative `Int` values is unspecified.
@@ -84,19 +85,19 @@ instance binaryUnsignedInt :: Pos b => Binary (UnsignedInt b) where
   not (UnsignedInt bs) = UnsignedInt (Bin.not bs)
   leftShift bit (UnsignedInt bs) = UnsignedInt <$> Bin.leftShift bit bs
   rightShift bit (UnsignedInt bs) = UnsignedInt <$> Bin.rightShift bit bs
-  toBits (UnsignedInt bs) = Bin.addLeadingZeros (Nat.toInt (undefined :: b)) bs
+  toBits (UnsignedInt bs) = Bin.addLeadingZeros (Nat.toInt $ (undefined :: b)) bs
   tryFromBits bits = f (Bin.stripLeadingZeros bits) where
-    f bs | Bin.length bs > Nat.toInt (undefined :: b) = Nothing
+    f bs | Bin.length bs > (Nat.toInt $ (undefined :: b)) = Nothing
     f bs = Just $ UnsignedInt bs
 
 instance boundedUnsignedInt :: Pos b => Bounded (UnsignedInt b) where
   bottom = zero
-  top = UnsignedInt (Bits (A.replicate (Nat.toInt (undefined :: b)) _1))
+  top = UnsignedInt (Bits (A.replicate (Nat.toInt $ (undefined :: b)) _1))
 
 instance semiringUnsignedInt :: Pos b => Semiring (UnsignedInt b) where
   zero = UnsignedInt Bin.zero
   add (UnsignedInt as) (UnsignedInt bs) = Bin.unsafeFromBits result where
-    nBits = Nat.toInt (undefined :: b)
+    nBits = Nat.toInt $ (undefined :: b)
     result = wrapBitsOverflow nBits (Bin.addBits _0 as bs)
     wrapBitsOverflow _ (NoOverflow bits) = bits
     wrapBitsOverflow n res =
@@ -104,10 +105,10 @@ instance semiringUnsignedInt :: Pos b => Semiring (UnsignedInt b) where
       in Bin.tail $ subtractBits (Bin.extendOverflow res) numValues
   one = UnsignedInt Bin.one
   mul (UnsignedInt as) (UnsignedInt bs) = Bin.unsafeFromBits result where
-    nBits = Nat.toInt (undefined :: b)
+    nBits = Nat.toInt $ (undefined :: b)
     rawResult = mulBits as bs
     numValues = Bits $ _1 : (A.replicate nBits _0)
-    (Tuple quo rem) = divModUnsigned rawResult numValues
+    Tuple quo rem = divModUnsigned rawResult numValues
     result = if Bin.isOdd quo then Bin.tail rem else rem
 
 half :: Bits -> Bits
@@ -131,10 +132,10 @@ divModUnsigned :: Bits -> Bits -> Tuple Bits Bits
 divModUnsigned x _ | Bin.isZero x = Tuple x x
 divModUnsigned x y =
   let t = divModUnsigned (half x) y
-      (Tuple q r) = bimap double double t
+      Tuple q r = bimap double double t
       r' = if Bin.isOdd x then increment r else r
   in if (UnsignedInt r' :: UnsignedInt D32) >= UnsignedInt y
-     then Tuple (increment q) (r' `subtractBits` y)
+     then Tuple (increment q) $ (r' `subtractBits` y)
      else Tuple q r'
 
 increment :: Bits -> Bits
@@ -152,9 +153,9 @@ instance baseNUnsignedInt :: Pos b => BaseN (UnsignedInt b) where
     req bits acc | (UnsignedInt bits :: UnsignedInt b) < UnsignedInt (Base.toBits r) =
       unsafeAsChars bits <> acc
     req bits acc =
-      let (Tuple quo rem) = bits `divModUnsigned` (Base.toBits r)
+      let Tuple quo rem = bits `divModUnsigned` Base.toBits r
       in req quo (unsafeAsChars rem <> acc)
-    unsafeAsChars bb = A.singleton $ unsafePartial $ fromJust $ chars !! Bin.unsafeBitsToInt bb
+    unsafeAsChars bb = A.singleton $ unsafePartial $ fromJust $ (Oset.fromFoldable chars `Oset.index` Bin.unsafeBitsToInt bb)
     chars = Map.keys (Base.alphabet r)
 
   fromStringAs _ "" = Nothing
